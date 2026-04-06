@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGE - Sistema de Gestão de Estoque e Compras</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .view { display: none; }
+        .view.active { display: block; }
+        .nav-active { border-bottom: 3px solid #3b82f6; color: #3b82f6; font-weight: 900; }
+        .winner-card { 
+            border: 2px solid #10b981; 
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.15);
+        }
+
+        #login-screen {
+            position: fixed; inset: 0; background: #0f172a;
+            display: flex; align-items: center; justify-content: center; z-index: 9999;
+        }
+
+        #view-mapa {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        }
+
+        .cotacao-header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(15, 23, 42, 0.1);
+        }
+
+        .cotacao-header h2 {
+            font-size: 1.875rem;
+            font-weight: 900;
+            letter-spacing: -0.025em;
+            margin: 0;
+        }
+
+        .empresa-box {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .empresa-box:hover {
+            border-color: #0f172a;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .empresa-box input {
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .empresa-box input:focus {
+            border-color: #0f172a;
+            box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.1);
+        }
+
+        .media-resultado {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(15, 23, 42, 0.1);
+        }
+
+        .media-valor {
+            font-size: 2.25rem;
+            font-weight: 900;
+            letter-spacing: -0.025em;
+        }
+
+        .proposta-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            border: 2px solid #e2e8f0;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .proposta-card:hover {
+            border-color: #0f172a;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+            transform: translateY(-4px);
+        }
+
+        .proposta-empresa {
+            font-size: 0.75rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .proposta-valor {
+            font-size: 2rem;
+            font-weight: 900;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+        }
+
+        .analise-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .analise-card:hover {
+            border-color: #0f172a;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+            transform: translateY(-2px);
+            background: #f8fafc;
+        }
+
+        .analise-titulo {
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+        }
+
+        .btn-analisar {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.875rem;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+        }
+
+        .btn-analisar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
+        }
+
+        .btn-analisar:active {
+            transform: translateY(0);
+        }
+
+        .section-divider {
+            border-top: 2px solid #e2e8f0;
+            padding-top: 2rem;
+            margin-top: 2rem;
+        }
+
+        #cot-material {
+            background: #f1f5f9 !important;
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 1rem;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        @media print {
+            nav, button, #btn-cancelar-edit, .no-print, #login-screen { display: none !important; }
+            body { background: white; }
+            .view { display: block !important; }
+            section { display: none !important; }
+            #view-mapa { display: block !important; border: none !important; background: white !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+
+    <div id="login-screen">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+            <div class="bg-blue-600 w-16 h-16 rounded-xl flex items-center justify-center text-3xl mx-auto mb-4">📦</div>
+            <h2 class="text-2xl font-black text-slate-800 mb-6">CUCA GESTÃO DE COMPRAS</h2>
+            <div class="space-y-4 text-left">
+                <input type="text" id="login-user" placeholder="Usuário" class="w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="password" id="login-pass" placeholder="Senha" class="w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                <button onclick="autenticar()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-black uppercase hover:bg-blue-700 transition">Entrar no Sistema</button>
+                <p id="login-error" class="text-red-500 text-center text-sm font-bold hidden">Acesso Negado!</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-content" class="hidden">
+        <nav class="bg-slate-900 text-white p-4 shadow-xl sticky top-0 z-50">
+            <div class="container mx-auto flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <div class="bg-blue-600 p-1 rounded">📦</div>
+                    <h1 class="text-xl font-black tracking-tighter">CUCA GESTÃO DE COMPRAS <span class="text-blue-400 font-light"> - GESTÃO DE COMPRAS</span></h1>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <div class="flex space-x-6 text-xs uppercase tracking-widest border-r border-slate-700 pr-6" id="nav-menu">
+                        <button onclick="showView('estoque')" id="btn-estoque" class="nav-item nav-active">Estoque</button>
+                        <button onclick="showView('solicitacao')" id="btn-solicitacao" class="nav-item">Solicitar Compra</button>
+                        <button onclick="showView('mapa')" id="btn-mapa" class="nav-item">Mapa de Cotação</button>
+                        </div>
+                    <button onclick="location.reload()" class="text-xs font-bold text-red-400 hover:text-red-300">SAIR</button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="container mx-auto mt-8 p-4">
+            <section id="view-estoque" class="view active">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200 h-fit">
+                        <h3 id="form-title" class="text-lg font-bold mb-4 border-b pb-2">Entrada de Material</h3>
+                        <div class="space-y-4">
+                            <input type="text" id="est-nome" placeholder="Nome do Material" class="w-full p-2 border rounded outline-none">
+                            <input type="number" id="est-qtd" placeholder="Quantidade" class="w-full p-2 border rounded">
+                            <button id="btn-salvar-estoque" onclick="adicionarAoEstoque()" class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 transition">Salvar</button>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2 bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                        <h3 class="text-lg font-bold mb-4 border-b pb-2 text-slate-400 font-mono">ESTOQUE - Saldos</h3>
+                        <table class="w-full text-left">
+                            <thead><tr class="text-xs uppercase bg-slate-50 text-slate-500"><th class="p-3">Material</th><th class="p-3">Saldo</th><th class="p-3 text-center">Ações</th></tr></thead>
+                            <tbody id="lista-estoque"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-usuarios" class="view">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-md border border-blue-100">
+                        <h3 class="font-bold mb-4 text-blue-600">Novo Usuário</h3>
+                        <input type="text" id="new-user-name" placeholder="Login" class="w-full p-2 border rounded mb-2">
+                        <input type="password" id="new-user-pass" placeholder="Senha" class="w-full p-2 border rounded mb-4">
+                        <button onclick="cadastrarUsuario()" class="w-full bg-slate-900 text-white py-2 rounded font-bold">Criar Acesso</button>
+                    </div>
+                    <div class="md:col-span-2 bg-white p-6 rounded-xl shadow-md border">
+                        <h3 class="text-lg font-bold mb-4 border-b pb-2">Usuários Cadastrados</h3>
+                        <table class="w-full text-left">
+                            <tbody id="lista-usuarios"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-solicitacao" class="view">
+                <div class="bg-white p-8 rounded-xl shadow-lg border-t-4 border-orange-400">
+                    <h2 class="text-2xl font-black mb-6">Solicitação de Compras</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <select id="sel-material" class="w-full p-3 border rounded-lg bg-slate-50 font-semibold"></select>
+                        <input type="number" id="sol-qtd" class="w-full p-3 border rounded-lg" placeholder="Quantidade">
+                        <input type="text" id="sol-solicitante" class="w-full p-3 border rounded-lg" placeholder="Solicitante">
+                    </div>
+                    <textarea id="sol-justificativa" class="w-full p-3 border rounded-lg mt-4" rows="3" placeholder="Justificativa da solicitação"></textarea>
+                    <button onclick="gerarSolicitacao()" class="mt-6 bg-orange-500 text-white px-8 py-3 rounded-lg font-black uppercase hover:bg-orange-600 transition">Criar Solicitação</button>
+                    <div id="lista-solicitacoes" class="mt-10 space-y-2"></div>
+                </div>
+            </section>
+
+            <section id="view-mapa" class="view p-6">
+                <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden">
+                    <!-- Header -->
+                    <div class="cotacao-header flex justify-between items-center">
+                        <h2>Mapa de Cotação</h2>
+                        <button id="btn-imprimir" onclick="imprimirCotacaoAtual()" class="hidden bg-white text-slate-900 px-6 py-2 rounded-lg font-bold text-xs uppercase hover:bg-slate-100 transition shadow-md">🖨️ Imprimir Análise</button>
+                    </div>
+
+                    <!-- Material Information -->
+                    <div class="px-8 pt-8">
+                        <input type="text" id="cot-material" readonly>
+                    </div>
+
+                    <!-- Input Section -->
+                    <div class="no-print px-8 py-8">
+                        <h3 class="text-lg font-bold text-slate-900 mb-6">Inserir Cotações</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div class="empresa-box">
+                                <label class="block text-xs font-bold text-slate-600 mb-2 uppercase">Empresa A</label>
+                                <input type="text" id="emp1" placeholder="Nome da Empresa" class="w-full p-3 border rounded-lg mb-3 outline-none">
+                                <label class="block text-xs font-bold text-slate-600 mb-2 uppercase">Valor (R$)</label>
+                                <input type="number" id="val1" placeholder="0,00" class="w-full p-3 border rounded-lg outline-none">
+                            </div>
+                            <div class="empresa-box">
+                                <label class="block text-xs font-bold text-slate-600 mb-2 uppercase">Empresa B</label>
+                                <input type="text" id="emp2" placeholder="Nome da Empresa" class="w-full p-3 border rounded-lg mb-3 outline-none">
+                                <label class="block text-xs font-bold text-slate-600 mb-2 uppercase">Valor (R$)</label>
+                                <input type="number" id="val2" placeholder="0,00" class="w-full p-3 border rounded-lg outline-none">
+                            </div>
+                            <div class="empresa-box">
+                                <label class="block text-xs font-bold text-slate-600 mb-2 uppercase">Empresa C</label>
+                                <input type="text" id="emp3" placeholder="Nome da Empresa" class="w-full p-3 border rounded-lg mb-3 outline-none">
+                                <label class="block text-xs font-bold text-slate-600 mb-2 uppercase">Valor (R$)</label>
+                                <input type="number" id="val3" placeholder="0,00" class="w-full p-3 border rounded-lg outline-none">
+                            </div>
+                        </div>
+                        <button onclick="processarCotacao()" class="btn-analisar w-full">Analisar Cotações</button>
+                    </div>
+
+                    <!-- Results Section -->
+                    <div id="resultado-cotacao" class="hidden px-8 py-8">
+                        <div class="media-resultado mb-8 flex justify-between items-center">
+                            <div>
+                                <p class="text-sm text-slate-300 mb-2">MÉDIA GERAL</p>
+                                <span id="txt-media" class="media-valor">R$ 0,00</span>
+                            </div>
+                        </div>
+                        <div id="cards-propostas" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+                    </div>
+
+                    <!-- History Section -->
+                    <div id="historico-cotacoes" class="section-divider px-8">
+                        <h3 class="text-lg font-bold text-slate-900 mb-6">Histórico de Cotações</h3>
+                        <div class="mb-6">
+                            <label class="block text-sm font-bold text-slate-600 mb-3">Selecione uma solicitação:</label>
+                            <select id="seletor-cotacoes" onchange="renderHistoricoCotacoesSelecionada()" class="w-full p-3 border border-slate-300 rounded-lg bg-white outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900 focus:ring-opacity-10"></select>
+                        </div>
+                        <div id="lista-historico" class="space-y-4 pb-8"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // --- BANCO DE DADOS LOCAL ---
+        let usuarios = JSON.parse(localStorage.getItem('sge_users')) || [{user: "admin", pass: "1234", role: "admin"}];
+        let estoque = JSON.parse(localStorage.getItem('sge_estoque')) || [];
+        let solicitacoes = JSON.parse(localStorage.getItem('sge_solicitacoes')) || [];
+        let usuarioAtual = null;
+
+        function salvarUsers() { localStorage.setItem('sge_users', JSON.stringify(usuarios)); }
+        function salvarEstoque() { localStorage.setItem('sge_estoque', JSON.stringify(estoque)); }
+        function salvarSolicitacoes() { localStorage.setItem('sge_solicitacoes', JSON.stringify(solicitacoes)); }
+
+        // --- SISTEMA DE LOGIN ---
+        function autenticar() {
+            const u = document.getElementById('login-user').value.trim();
+            const p = document.getElementById('login-pass').value.trim();
+            const error = document.getElementById('login-error');
+
+            const login = usuarios.find(x => x.user === u && x.pass === p);
+
+            if(login) {
+                usuarioAtual = login;
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+                
+                // Se for admin, mostra aba de usuários
+                if(login.role === 'admin') {
+                    const menu = document.getElementById('nav-menu');
+                    if(!document.getElementById('btn-usuarios')) {
+                        menu.innerHTML += `<button onclick="showView('usuarios')" id="btn-usuarios" class="nav-item text-blue-400">Usuários</button>`;
+                    }
+                }
+                showView('estoque');
+            } else {
+                alert('Usuário ou senha incorretos. Usuários disponíveis: ' + JSON.stringify(usuarios));
+                error.classList.remove('hidden');
+            }
+        }
+
+        // --- GESTÃO DE USUÁRIOS ---
+        function cadastrarUsuario() {
+            const u = document.getElementById('new-user-name').value;
+            const p = document.getElementById('new-user-pass').value;
+            if(!u || !p) return alert("Preencha tudo");
+            
+            usuarios.push({user: u, pass: p, role: "user"});
+            salvarUsers();
+            renderUsuarios();
+            alert("Usuário criado!");
+            document.getElementById('new-user-name').value = "";
+            document.getElementById('new-user-pass').value = "";
+        }
+
+        function renderUsuarios() {
+            const lista = document.getElementById('lista-usuarios');
+            lista.innerHTML = usuarios.map((u, i) => `
+                <tr class="border-b">
+                    <td class="p-3 font-bold">${u.user}</td>
+                    <td class="p-3 text-slate-400 uppercase text-xs">${u.role}</td>
+                    <td class="p-3 text-right">
+                        ${u.role !== 'admin' ? `<button onclick="usuarios.splice(${i},1);salvarUsers();renderUsuarios()" class="text-red-500">Remover</button>` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderSolicitacoes() {
+            const lista = document.getElementById('lista-solicitacoes');
+            if(!lista) return;
+            lista.innerHTML = solicitacoes.map((s, i) => `
+                <div class="p-4 bg-gray-50 rounded-lg border border-slate-200">
+                    <div class="flex justify-between items-start gap-4 mb-2">
+                        <div>
+                            <p><strong>Material:</strong> ${s.material}</p>
+                            <p><strong>Quantidade:</strong> ${s.quantidade}</p>
+                            <p><strong>Solicitante:</strong> ${s.solicitante}</p>
+                            <p><strong>Justificativa:</strong> ${s.justificativa || '—'}</p>
+                            <p><strong>Data:</strong> ${s.data}</p>
+                        </div>
+                        <div class="flex gap-2 self-start">
+                            <button onclick="editarSolicitacao(${i})" class="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700">Editar</button>
+                            <button onclick="excluirSolicitacao(${i})" class="px-3 py-2 bg-red-500 text-white rounded-lg text-xs font-bold hover:bg-red-600">Excluir</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function editarSolicitacao(i) {
+            const solicitacao = solicitacoes[i];
+            const novoMaterial = prompt('Material:', solicitacao.material);
+            if(novoMaterial === null) return;
+            const novaQuantidade = prompt('Quantidade:', solicitacao.quantidade);
+            if(novaQuantidade === null) return;
+            const novoSolicitante = prompt('Solicitante:', solicitacao.solicitante);
+            if(novoSolicitante === null) return;
+
+            if(!novoMaterial.trim() || !novaQuantidade.trim() || !novoSolicitante.trim()) {
+                return alert('Preencha todos os campos para atualizar a solicitação.');
+            }
+
+            solicitacao.material = novoMaterial.trim();
+            solicitacao.quantidade = novaQuantidade.trim();
+            solicitacao.solicitante = novoSolicitante.trim();
+            salvarSolicitacoes();
+            renderSolicitacoes();
+            if(document.getElementById('view-mapa').classList.contains('active')) {
+                document.getElementById('cot-material').value = `${solicitacao.material} (Qtd: ${solicitacao.quantidade}) - ${solicitacao.solicitante}`;
+                renderHistoricoCotacoes();
+            }
+        }
+
+        function excluirSolicitacao(i) {
+            const justificativa = prompt('Informe a justificativa para excluir esta solicitação:');
+            if(!justificativa || !justificativa.trim()) {
+                return alert('Justificativa obrigatória para excluir a solicitação.');
+            }
+            solicitacoes.splice(i, 1);
+            salvarSolicitacoes();
+            renderSolicitacoes();
+            if(document.getElementById('view-mapa').classList.contains('active')) {
+                renderHistoricoCotacoes();
+            }
+            alert('Solicitação excluída com justificativa registrada.');
+        }
+
+        function renderHistoricoCotacoes() {
+            const seletor = document.getElementById('seletor-cotacoes');
+            if(!seletor) return;
+            const textoAtual = document.getElementById('cot-material').value;
+            let selecionado = '';
+            if(textoAtual) {
+                const mat = textoAtual.split(' (Qtd: ')[0];
+                const qtd = textoAtual.split(' (Qtd: ')[1]?.split(')')[0];
+                const sol = textoAtual.split(' - ')[1];
+                const idxAtual = solicitacoes.findIndex(s => s.material === mat && s.quantidade == qtd && s.solicitante === sol);
+                if(idxAtual >= 0) selecionado = idxAtual;
+            }
+            seletor.innerHTML = '<option value="">-- Selecione uma solicitação --</option>' + 
+                solicitacoes.map((s, i) => `<option value="${i}">${s.material} (${s.quantidade} UN) - ${s.solicitante}</option>`).join('');
+            if(selecionado !== '') seletor.value = selecionado;
+            renderHistoricoCotacoesSelecionada();
+        }
+
+        function renderHistoricoCotacoesSelecionada() {
+            const seletor = document.getElementById('seletor-cotacoes');
+            const idx = parseInt(seletor.value);
+            const lista = document.getElementById('lista-historico');
+            const resultado = document.getElementById('resultado-cotacao');
+            const btnImprimir = document.getElementById('btn-imprimir');
+            const cards = document.getElementById('cards-propostas');
+
+            if(isNaN(idx) || idx < 0) {
+                lista.innerHTML = '<p class="text-gray-400 text-sm">Selecione uma solicitação para ver o histórico de cotações.</p>';
+                resultado.classList.add('hidden');
+                btnImprimir.classList.add('hidden');
+                cards.innerHTML = '';
+                return;
+            }
+
+            const solicitacao = solicitacoes[idx];
+            // Atualizar o campo cot-material quando uma solicitação é selecionada
+            document.getElementById('cot-material').value = `${solicitacao.material} (Qtd: ${solicitacao.quantidade}) - ${solicitacao.solicitante}`;
+
+            if(!solicitacao || !solicitacao.historicoCotacoes || solicitacao.historicoCotacoes.length === 0) {
+                lista.innerHTML = '<p class="text-gray-400 text-sm italic">Nenhuma cotação salva para esta solicitação.</p>';
+                resultado.classList.add('hidden');
+                btnImprimir.classList.add('hidden');
+                cards.innerHTML = '';
+                return;
+            }
+
+            lista.innerHTML = solicitacao.historicoCotacoes.map((h, vidx) => {
+                const media = (h.cotacoes.reduce((sum, c) => sum + c.valor, 0)) / h.cotacoes.length;
+                const menor = Math.min(...h.cotacoes.map(c => c.valor));
+                return `
+                    <div class="p-4 bg-white rounded-lg border border-slate-200 cursor-pointer hover:shadow-lg analise-card" data-idx-sol="${idx}" data-idx-analise="${vidx}">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-bold">Análise #${vidx + 1}</span>
+                            <span class="text-xs text-slate-500">${h.data}</span>
+                        </div>
+                        <p class="text-sm text-slate-600">Média: ${media.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                        <p class="text-sm text-slate-600">Melhor preço: ${menor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                        <p class="text-xs text-blue-600 mt-2">Clique para visualizar e imprimir</p>
+                    </div>
+                `;
+            }).join('');
+
+            // Adicionar event listeners aos cards de análise
+            document.querySelectorAll('.analise-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const idxSol = parseInt(this.getAttribute('data-idx-sol'));
+                    const idxAnalise = parseInt(this.getAttribute('data-idx-analise'));
+                    mostrarCotacaoSalva(idxSol, idxAnalise);
+                });
+            });
+
+            // Preenche visão inicial com a última cotação salva
+            mostrarCotacaoSalva(idx, solicitacao.historicoCotacoes.length - 1, false);
+        }
+
+        function mostrarCotacaoSalva(idxSol, idxAnalise, abrirModal = false) {
+            const solicitacao = solicitacoes[idxSol];
+            const analise = solicitacao.historicoCotacoes[idxAnalise];
+            const media = (analise.cotacoes.reduce((sum, c) => sum + c.valor, 0)) / analise.cotacoes.length;
+            const menor = Math.min(...analise.cotacoes.map(c => c.valor));
+            const resultado = document.getElementById('resultado-cotacao');
+            const btnImprimir = document.getElementById('btn-imprimir');
+            const cards = document.getElementById('cards-propostas');
+
+            // Atualizar o campo cot-material para que novas análises sejam salvas na mesma solicitação
+            document.getElementById('cot-material').value = `${solicitacao.material} (Qtd: ${solicitacao.quantidade}) - ${solicitacao.solicitante}`;
+            resultado.classList.remove('hidden');
+            btnImprimir.classList.remove('hidden');
+            document.getElementById('txt-media').innerText = media.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            cards.innerHTML = analise.cotacoes.map(c => `
+                <div class="proposta-card ${c.valor === menor ? 'winner-card' : ''}">
+                    <p class="proposta-empresa">${c.empresa || '—'}</p>
+                    <p class="proposta-valor">${c.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                    ${c.valor === menor ? '<p class="text-xs font-bold text-green-600 mt-2">✓ Melhor Preço</p>' : '<p class="text-xs text-slate-400 mt-2">—</p>'}
+                </div>
+            `).join('');
+        }
+
+        function imprimirCotacaoAtual() {
+            const cotMaterial = document.getElementById('cot-material').value;
+            const resultado = document.getElementById('resultado-cotacao');
+            if(!cotMaterial || resultado.classList.contains('hidden')) {
+                return alert('Selecione primeiro uma cotação salva para imprimir.');
+            }
+            window.print();
+        }
+
+        // --- NAVEGAÇÃO E LOGICA ---
+        function showView(name) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById('view-'+name).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('nav-active'));
+            const btn = document.getElementById('btn-'+name);
+            if(btn) btn.classList.add('nav-active');
+            
+            if(name === 'estoque') renderEstoque();
+            if(name === 'usuarios') renderUsuarios();
+            if(name === 'solicitacao') {
+                renderSelectMaterial();
+                renderSolicitacoes();
+            }
+            if(name === 'mapa') renderHistoricoCotacoes();
+        }
+
+        function adicionarAoEstoque() {
+            const n = document.getElementById('est-nome').value;
+            const q = parseInt(document.getElementById('est-qtd').value);
+            if(!n || !q) return alert("Erro");
+            estoque.push({nome: n, qtd: q});
+            salvarEstoque();
+            renderEstoque();
+            document.getElementById('est-nome').value = "";
+            document.getElementById('est-qtd').value = "";
+        }
+
+        function editarEstoque(i) {
+            const novoNome = prompt("Novo nome do material:", estoque[i].nome);
+            const novaQtd = prompt("Nova quantidade:", estoque[i].qtd);
+            if(novoNome !== null && novaQtd !== null && novoNome.trim() && !isNaN(novaQtd)) {
+                estoque[i].nome = novoNome.trim();
+                estoque[i].qtd = parseInt(novaQtd);
+                salvarEstoque();
+                renderEstoque();
+            }
+        }
+
+        function renderEstoque() {
+            const tbody = document.getElementById('lista-estoque');
+            tbody.innerHTML = estoque.map((item, i) => `
+                <tr class="border-b">
+                    <td class="p-3 font-bold">${item.nome}</td>
+                    <td class="p-3 font-mono">${item.qtd} UN</td>
+                    <td class="p-3 text-center">
+                        <button onclick="editarEstoque(${i})" class="text-blue-500 mr-2">✏️</button>
+                        <button onclick="estoque.splice(${i},1);salvarEstoque();renderEstoque()" class="text-red-500">🗑️</button>
+                    </td>
+                </tr>`).join('');
+        }
+
+        function renderSelectMaterial() {
+            const select = document.getElementById('sel-material');
+            select.innerHTML = '<option value="">-- Selecione --</option>' + 
+                estoque.map(item => `<option value="${item.nome}">${item.nome}</option>`).join('');
+        }
+
+        function gerarSolicitacao() {
+            const mat = document.getElementById('sel-material').value;
+            const qtd = document.getElementById('sol-qtd').value;
+            const sol = document.getElementById('sol-solicitante').value;
+            const jus = document.getElementById('sol-justificativa').value.trim();
+            if(!mat || !qtd || !sol || !jus) return alert("Preencha todos os campos, incluindo a justificativa");
+
+            const novaSolicitacao = {
+                material: mat,
+                quantidade: qtd,
+                solicitante: sol,
+                justificativa: jus,
+                data: new Date().toLocaleString(),
+                historicoCotacoes: []
+            };
+            solicitacoes.push(novaSolicitacao);
+            salvarSolicitacoes();
+            renderSolicitacoes();
+
+            document.getElementById('cot-material').value = mat + " (Qtd: " + qtd + ") - " + sol;
+            showView('mapa'); // Vai direto para o mapa ao criar
+        }
+
+        function processarCotacao() {
+            const v1 = parseFloat(document.getElementById('val1').value) || 0;
+            const v2 = parseFloat(document.getElementById('val2').value) || 0;
+            const v3 = parseFloat(document.getElementById('val3').value) || 0;
+            if(v1 <= 0 || v2 <= 0 || v3 <= 0) return alert("Insira os 3 preços!");
+
+            const texto = document.getElementById('cot-material').value;
+            if(!texto.trim()) {
+                return alert("Selecione ou crie uma solicitação primeiro antes de analisar cotações.");
+            }
+
+            const media = (v1 + v2 + v3) / 3;
+            const menor = Math.min(v1, v2, v3);
+            document.getElementById('resultado-cotacao').classList.remove('hidden');
+            document.getElementById('btn-imprimir').classList.remove('hidden');
+            document.getElementById('txt-media').innerText = media.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            const cotacoes = [
+                {empresa: document.getElementById('emp1').value || 'A', valor: v1},
+                {empresa: document.getElementById('emp2').value || 'B', valor: v2},
+                {empresa: document.getElementById('emp3').value || 'C', valor: v3}
+            ];
+
+            const mat = texto.split(' (Qtd: ')[0];
+            const qtd = texto.split(' (Qtd: ')[1]?.split(')')[0];
+            const sol = texto.split(' - ')[1];
+
+            const solicitacao = solicitacoes.find(s => s.material === mat && s.quantidade == qtd && s.solicitante === sol);
+
+            if(solicitacao) {
+                solicitacao.historicoCotacoes.push({ cotacoes, data: new Date().toLocaleString() });
+                salvarSolicitacoes();
+                renderHistoricoCotacoes();
+            } else {
+                alert('Erro: Solicitação não encontrada. Tente recriar a solicitação.');
+            }
+
+            const container = document.getElementById('cards-propostas');
+            container.innerHTML = cotacoes.map(p => `
+                <div class="proposta-card ${p.valor === menor ? 'winner-card' : ''}">
+                    <p class="proposta-empresa">${p.empresa || '—'}</p>
+                    <p class="proposta-valor">${p.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                    ${p.valor === menor ? '<p class="text-xs font-bold text-green-600 mt-2">✓ Melhor Preço</p>' : '<p class="text-xs text-slate-400 mt-2">—</p>'}
+                </div>`).join('');
+        }
+
+        // Inicialização
+        document.querySelectorAll('#login-user, #login-pass').forEach(input => {
+            input.addEventListener('keypress', function(e) {
+                if(e.key === 'Enter') autenticar();
+            });
+        });
+        document.querySelectorAll('#est-nome, #est-qtd').forEach(input => {
+            input.addEventListener('keypress', function(e) {
+                if(e.key === 'Enter') adicionarAoEstoque();
+            });
+        });
+        document.querySelectorAll('#emp1, #val1, #emp2, #val2, #emp3, #val3').forEach(input => {
+            input.addEventListener('keypress', function(e) {
+                if(e.key === 'Enter') processarCotacao();
+            });
+        });
+        renderEstoque();
+        renderSolicitacoes();
+    </script>
+</body>
+</html>
