@@ -204,7 +204,6 @@
                 <input type="text" id="login-user" placeholder="Usuário" class="w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
                 <input type="password" id="login-pass" placeholder="Senha" class="w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
                 <button onclick="autenticar()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-black uppercase hover:bg-blue-700 transition">Entrar no Sistema</button>
-                <p id="login-error" class="text-red-500 text-center text-sm font-bold hidden">Acesso Negado!</p>
             </div>
         </div>
     </div>
@@ -379,7 +378,6 @@
         function autenticar() {
             const u = document.getElementById('login-user').value.trim();
             const p = document.getElementById('login-pass').value.trim();
-            const error = document.getElementById('login-error');
 
             const login = usuarios.find(x => x.user === u && x.pass === p);
 
@@ -397,8 +395,7 @@
                 }
                 showView('estoque');
             } else {
-                alert('Usuário ou senha incorretos. Usuários disponíveis: ' + JSON.stringify(usuarios));
-                error.classList.remove('hidden');
+                alert('Usuário ou senha incorretos.');
             }
         }
 
@@ -795,6 +792,11 @@
         document.querySelectorAll('#est-nome, #est-qtd').forEach(input => {
             input.addEventListener('keypress', function(e) {
                 if(e.key === 'Enter') adicionarAoEstoque();
+            });
+        });
+        document.querySelectorAll('#saida-qtd, #saida-area, #saida-solicitante').forEach(input => {
+            input.addEventListener('keypress', function(e) {
+                if(e.key === 'Enter') saidaDoEstoque();
             });
         });
         document.querySelectorAll('#emp1, #val1, #emp2, #val2, #emp3, #val3').forEach(input => {
