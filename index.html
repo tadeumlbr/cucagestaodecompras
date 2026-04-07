@@ -179,6 +179,19 @@
             section { display: none !important; }
             #view-mapa { display: block !important; border: none !important; background: white !important; }
         }
+
+        .low-stock {
+            background-color: #fef2f2;
+        }
+
+        .low-stock td {
+            color: #dc2626;
+        }
+
+        .low-stock-icon {
+            color: #dc2626;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body class="bg-slate-50 font-sans text-slate-900">
@@ -216,13 +229,25 @@
 
         <main class="container mx-auto mt-8 p-4">
             <section id="view-estoque" class="view active">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                     <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200 h-fit">
                         <h3 id="form-title" class="text-lg font-bold mb-4 border-b pb-2">Entrada de Material</h3>
                         <div class="space-y-4">
                             <input type="text" id="est-nome" placeholder="Nome do Material" class="w-full p-2 border rounded outline-none">
                             <input type="number" id="est-qtd" placeholder="Quantidade" class="w-full p-2 border rounded">
                             <button id="btn-salvar-estoque" onclick="adicionarAoEstoque()" class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 transition">Salvar</button>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md border border-red-200 h-fit">
+                        <h3 class="text-lg font-bold mb-4 border-b pb-2 text-red-600">Saída de Material</h3>
+                        <div class="space-y-4">
+                            <select id="saida-material" class="w-full p-2 border rounded outline-none">
+                                <option value="">-- Selecione Material --</option>
+                            </select>
+                            <input type="number" id="saida-qtd" placeholder="Quantidade" class="w-full p-2 border rounded">
+                            <input type="text" id="saida-area" placeholder="Departamento/Área" class="w-full p-2 border rounded outline-none">
+                            <input type="text" id="saida-solicitante" placeholder="Solicitante" class="w-full p-2 border rounded outline-none">
+                            <button onclick="saidaDoEstoque()" class="w-full bg-red-600 text-white py-2 rounded font-bold hover:bg-red-700 transition">Retirar</button>
                         </div>
                     </div>
                     <div class="md:col-span-2 bg-white p-6 rounded-xl shadow-md border border-slate-200">
@@ -232,6 +257,13 @@
                             <tbody id="lista-estoque"></tbody>
                         </table>
                     </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                    <h3 class="text-lg font-bold mb-4 border-b pb-2 text-slate-400 font-mono">HISTÓRICO - Saídas de Material</h3>
+                    <table class="w-full text-left text-sm">
+                        <thead><tr class="text-xs uppercase bg-slate-50 text-slate-500"><th class="p-3">Data/Hora</th><th class="p-3">Material</th><th class="p-3">Qtd</th><th class="p-3">Departamento/Área</th><th class="p-3">Solicitante</th></tr></thead>
+                        <tbody id="lista-historico-saidas"></tbody>
+                    </table>
                 </div>
             </section>
 
@@ -335,10 +367,12 @@
         let usuarios = JSON.parse(localStorage.getItem('sge_users')) || [{user: "admin", pass: "1234", role: "admin"}];
         let estoque = JSON.parse(localStorage.getItem('sge_estoque')) || [];
         let solicitacoes = JSON.parse(localStorage.getItem('sge_solicitacoes')) || [];
+        let historicoSaidas = JSON.parse(localStorage.getItem('sge_historico_saidas')) || [];
         let usuarioAtual = null;
 
         function salvarUsers() { localStorage.setItem('sge_users', JSON.stringify(usuarios)); }
         function salvarEstoque() { localStorage.setItem('sge_estoque', JSON.stringify(estoque)); }
+        function salvarHistoricoSaidas() { localStorage.setItem('sge_historico_saidas', JSON.stringify(historicoSaidas)); }
         function salvarSolicitacoes() { localStorage.setItem('sge_solicitacoes', JSON.stringify(solicitacoes)); }
 
         // --- SISTEMA DE LOGIN ---
@@ -570,7 +604,11 @@
             const btn = document.getElementById('btn-'+name);
             if(btn) btn.classList.add('nav-active');
             
-            if(name === 'estoque') renderEstoque();
+            if(name === 'estoque') {
+                renderEstoque();
+                renderSelectSaida();
+                renderHistoricoSaidas();
+            }
             if(name === 'usuarios') renderUsuarios();
             if(name === 'solicitacao') {
                 renderSelectMaterial();
@@ -580,12 +618,18 @@
         }
 
         function adicionarAoEstoque() {
-            const n = document.getElementById('est-nome').value;
+            const n = document.getElementById('est-nome').value.trim();
             const q = parseInt(document.getElementById('est-qtd').value);
-            if(!n || !q) return alert("Erro");
-            estoque.push({nome: n, qtd: q});
+            if(!n || !q) return alert("Preencha nome e quantidade");
+            const existente = estoque.find(item => item.nome.toLowerCase() === n.toLowerCase());
+            if(existente) {
+                existente.qtd += q;
+            } else {
+                estoque.push({nome: n, qtd: q});
+            }
             salvarEstoque();
             renderEstoque();
+            renderSelectSaida();
             document.getElementById('est-nome').value = "";
             document.getElementById('est-qtd').value = "";
         }
@@ -598,19 +642,72 @@
                 estoque[i].qtd = parseInt(novaQtd);
                 salvarEstoque();
                 renderEstoque();
+                renderSelectSaida();
             }
         }
 
         function renderEstoque() {
             const tbody = document.getElementById('lista-estoque');
-            tbody.innerHTML = estoque.map((item, i) => `
-                <tr class="border-b">
-                    <td class="p-3 font-bold">${item.nome}</td>
+            tbody.innerHTML = estoque.map((item, i) => {
+                const isLowStock = item.qtd < 20;
+                return `
+                <tr class="border-b ${isLowStock ? 'low-stock' : ''}">
+                    <td class="p-3 font-bold">${item.nome} ${isLowStock ? '<span class="low-stock-icon">⚠️</span>' : ''}</td>
                     <td class="p-3 font-mono">${item.qtd} UN</td>
                     <td class="p-3 text-center">
                         <button onclick="editarEstoque(${i})" class="text-blue-500 mr-2">✏️</button>
-                        <button onclick="estoque.splice(${i},1);salvarEstoque();renderEstoque()" class="text-red-500">🗑️</button>
+                        <button onclick="estoque.splice(${i},1);salvarEstoque();renderEstoque();renderSelectSaida()" class="text-red-500">🗑️</button>
                     </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderSelectSaida() {
+            const select = document.getElementById('saida-material');
+            select.innerHTML = '<option value="">-- Selecione Material --</option>' + 
+                estoque.map(item => `<option value="${item.nome}">${item.nome} (${item.qtd} UN)</option>`).join('');
+        }
+
+        function saidaDoEstoque() {
+            const mat = document.getElementById('saida-material').value;
+            const qtd = parseInt(document.getElementById('saida-qtd').value);
+            const area = document.getElementById('saida-area').value.trim();
+            const solicitante = document.getElementById('saida-solicitante').value.trim();
+            if(!mat || !qtd || !area || !solicitante) return alert("Preencha material, quantidade, departamento/área e solicitante");
+            const item = estoque.find(i => i.nome === mat);
+            if(!item) return alert("Material não encontrado");
+            if(item.qtd < qtd) return alert("Quantidade insuficiente em estoque");
+            item.qtd -= qtd;
+            historicoSaidas.push({
+                data: new Date().toLocaleString('pt-BR'),
+                material: mat,
+                quantidade: qtd,
+                area: area,
+                solicitante: solicitante
+            });
+            salvarEstoque();
+            salvarHistoricoSaidas();
+            renderEstoque();
+            renderSelectSaida();
+            renderHistoricoSaidas();
+            document.getElementById('saida-qtd').value = "";
+            document.getElementById('saida-area').value = "";
+            document.getElementById('saida-solicitante').value = "";
+        }
+
+        function renderHistoricoSaidas() {
+            const tbody = document.getElementById('lista-historico-saidas');
+            if(historicoSaidas.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-slate-400">Nenhuma saída registrada</td></tr>';
+                return;
+            }
+            tbody.innerHTML = historicoSaidas.slice().reverse().map((saida, i) => `
+                <tr class="border-b hover:bg-slate-50">
+                    <td class="p-3 text-slate-600">${saida.data}</td>
+                    <td class="p-3 font-bold">${saida.material}</td>
+                    <td class="p-3 font-mono">${saida.quantidade} UN</td>
+                    <td class="p-3">${saida.area}</td>
+                    <td class="p-3">${saida.solicitante}</td>
                 </tr>`).join('');
         }
 
